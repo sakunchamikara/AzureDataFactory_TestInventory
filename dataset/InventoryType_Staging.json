@@ -1,0 +1,53 @@
+{
+	"name": "InventoryType_Staging",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "EnactorDW_Staging",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"ConnectionStringKey": "@dataset().ConnectionStringKey",
+				"KeyVault_URL": "@dataset().KeyVault_URL"
+			}
+		},
+		"parameters": {
+			"ConnectionStringKey": {
+				"type": "string",
+				"defaultValue": "EnactorBI-StagingDB-ConnectionString"
+			},
+			"KeyVault_URL": {
+				"type": "string",
+				"defaultValue": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+			}
+		},
+		"folder": {
+			"name": "Staging"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "ID",
+				"type": "varchar"
+			},
+			{
+				"name": "Description",
+				"type": "varchar"
+			},
+			{
+				"name": "Inventory_Type",
+				"type": "varchar"
+			},
+			{
+				"name": "last_updated",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "Inventorytype_Staging"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

@@ -1,0 +1,68 @@
+{
+	"name": "DimStockledgerTransactionType",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "EnactorDW",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"KeyVault_URL": {
+					"value": "@dataset().KeyVault_URL",
+					"type": "Expression"
+				},
+				"ConnectionStringKey": {
+					"value": "@dataset().ConnectionStringKey",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"ConnectionStringKey": {
+				"type": "string",
+				"defaultValue": "EnactorBI-DataWarehouseDB-ConnectionString"
+			},
+			"KeyVault_URL": {
+				"type": "string",
+				"defaultValue": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+			}
+		},
+		"folder": {
+			"name": "Dimensions"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "Transaction_Type_Key",
+				"type": "bigint",
+				"precision": 19
+			},
+			{
+				"name": "Transaction_Type",
+				"type": "varchar"
+			},
+			{
+				"name": "Description",
+				"type": "varchar"
+			},
+			{
+				"name": "Data_Type_Id",
+				"type": "varchar"
+			},
+			{
+				"name": "IsCurrent",
+				"type": "bit"
+			},
+			{
+				"name": "DateCreated",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "DimStockLedgerTransactionType"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

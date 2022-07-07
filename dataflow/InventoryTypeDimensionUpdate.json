@@ -1,0 +1,160 @@
+{
+	"name": "InventoryTypeDimensionUpdate",
+	"properties": {
+		"folder": {
+			"name": "Dimension Updates"
+		},
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "InventoryType_Staging",
+						"type": "DatasetReference"
+					},
+					"name": "InventoryTypeStagingData"
+				},
+				{
+					"dataset": {
+						"referenceName": "DimInventoryType",
+						"type": "DatasetReference"
+					},
+					"name": "DimInventoryType"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "DimInventoryType",
+						"type": "DatasetReference"
+					},
+					"name": "InsertDimInventoryType"
+				},
+				{
+					"dataset": {
+						"referenceName": "DimInventoryType",
+						"type": "DatasetReference"
+					},
+					"name": "UpdateDimInventoryType"
+				}
+			],
+			"transformations": [
+				{
+					"name": "DataSinceLastUpdateAndDataFromBegining"
+				},
+				{
+					"name": "SetIsCurrentToTrue"
+				},
+				{
+					"name": "DimNames"
+				},
+				{
+					"name": "LookupAgainstDimTable"
+				},
+				{
+					"name": "ExistingRows"
+				},
+				{
+					"name": "SetIsCurrentToFalse"
+				},
+				{
+					"name": "SetToUpdate"
+				},
+				{
+					"name": "DataSinceLastUpdate"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     LastUpdatedDate as string ('2000-01-01 00:00:00'),",
+				"     DimInventoryTypeCount as integer (0)",
+				"}",
+				"source(output(",
+				"          ID as string,",
+				"          Description as string,",
+				"          Inventory_Type as string,",
+				"          last_updated as timestamp",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> InventoryTypeStagingData",
+				"source(output(",
+				"          Inventory_Type_Key as long,",
+				"          Inventory_Type as string,",
+				"          Description as string,",
+				"          IsCurrent as boolean,",
+				"          DateCreated as timestamp",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> DimInventoryType",
+				"InventoryTypeStagingData filter($DimInventoryTypeCount == 0  || ( $DimInventoryTypeCount > 0  && last_updated > toTimestamp($LastUpdatedDate,'yyyy-MM-dd HH:mm:ss'))) ~> DataSinceLastUpdateAndDataFromBegining",
+				"DataSinceLastUpdateAndDataFromBegining derive(IsCurrent = true()) ~> SetIsCurrentToTrue",
+				"DimInventoryType select(mapColumn(",
+				"          DimInventory_Type_Key = Inventory_Type_Key,",
+				"          DimInventory_Type = Inventory_Type,",
+				"          DimDescription = Description,",
+				"          DimIsCurrent = IsCurrent,",
+				"          DimDateCreated = DateCreated",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> DimNames",
+				"DataSinceLastUpdate, DimNames lookup(Inventory_Type == DimInventory_Type,",
+				"     multiple: true,",
+				"     broadcast: 'auto')~> LookupAgainstDimTable",
+				"LookupAgainstDimTable filter(!isNull(DimInventory_Type)) ~> ExistingRows",
+				"ExistingRows derive(DimIsCurrent = false()) ~> SetIsCurrentToFalse",
+				"SetIsCurrentToFalse alterRow(updateIf(1==1)) ~> SetToUpdate",
+				"DataSinceLastUpdateAndDataFromBegining filter($DimInventoryTypeCount == 0 && isNull(Inventory_Type)) ~> DataSinceLastUpdate",
+				"SetIsCurrentToTrue sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          Inventory_Type_Key as long,",
+				"          Inventory_Type as string,",
+				"          Description as string,",
+				"          IsCurrent as boolean,",
+				"          DateCreated as timestamp",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError',",
+				"     mapColumn(",
+				"          Inventory_Type,",
+				"          Description,",
+				"          IsCurrent,",
+				"          DateCreated = last_updated",
+				"     )) ~> InsertDimInventoryType",
+				"SetToUpdate sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          Inventory_Type_Key as long,",
+				"          Inventory_Type as string,",
+				"          Description as string,",
+				"          IsCurrent as boolean,",
+				"          DateCreated as timestamp",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:false,",
+				"     updateable:true,",
+				"     upsertable:false,",
+				"     keys:['Inventory_Type_Key'],",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError',",
+				"     mapColumn(",
+				"          IsCurrent = DimIsCurrent,",
+				"          Inventory_Type_Key = DimInventory_Type_Key,",
+				"          DateCreated = last_updated",
+				"     )) ~> UpdateDimInventoryType"
+			]
+		}
+	}
+}

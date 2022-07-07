@@ -1,0 +1,39 @@
+{
+	"name": "Operational_DB",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "OperationalDB_MySQL",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"ConnectionStringKey": {
+					"value": "@dataset().ConnectionStringKey",
+					"type": "Expression"
+				},
+				"KeyVault_URL": {
+					"value": "@dataset().KeyVault_URL",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"ConnectionStringKey": {
+				"type": "String",
+				"defaultValue": "xxx"
+			},
+			"KeyVault_URL": {
+				"type": "String",
+				"defaultValue": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+			}
+		},
+		"folder": {
+			"name": "Source"
+		},
+		"annotations": [],
+		"type": "MySqlTable",
+		"schema": [],
+		"typeProperties": {
+			"tableName": "products"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

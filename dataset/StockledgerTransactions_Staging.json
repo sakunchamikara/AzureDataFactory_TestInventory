@@ -1,0 +1,77 @@
+{
+	"name": "StockledgerTransactions_Staging",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "EnactorDW_Staging",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"ConnectionStringKey": "@dataset().ConnectionStringKey",
+				"KeyVault_URL": "@dataset().KeyVault_URL"
+			}
+		},
+		"parameters": {
+			"ConnectionStringKey": {
+				"type": "string",
+				"defaultValue": "EnactorBI-StagingDB-ConnectionString"
+			},
+			"KeyVault_URL": {
+				"type": "string",
+				"defaultValue": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+			}
+		},
+		"folder": {
+			"name": "Staging"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "Date",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "Transaction_Type",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Product_Id",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Quantity",
+				"type": "float",
+				"precision": 15
+			},
+			{
+				"name": "Cost",
+				"type": "float",
+				"precision": 15
+			},
+			{
+				"name": "Retail_Ex_Tax",
+				"type": "bigint",
+				"precision": 19
+			},
+			{
+				"name": "Retail_Inc_Tax",
+				"type": "bigint",
+				"precision": 19
+			},
+			{
+				"name": "Location_Id",
+				"type": "varchar"
+			},
+			{
+				"name": "Product_Description",
+				"type": "varchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "StockledgerTransactions_Staging"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

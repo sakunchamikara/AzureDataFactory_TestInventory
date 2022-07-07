@@ -1,0 +1,73 @@
+{
+	"name": "DimProduct",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "EnactorDW",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"KeyVault_URL": "@dataset().KeyVault_URL",
+				"ConnectionStringKey": {
+					"value": "@dataset().ConnectionStringKey",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"ConnectionStringKey": {
+				"type": "string",
+				"defaultValue": "EnactorBI-DataWarehouseDB-ConnectionString"
+			},
+			"KeyVault_URL": {
+				"type": "string",
+				"defaultValue": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+			}
+		},
+		"folder": {
+			"name": "Dimensions"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "Product_Key",
+				"type": "bigint",
+				"precision": 19
+			},
+			{
+				"name": "product_id",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Type",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Description",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Long_description",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Image_URL",
+				"type": "nvarchar"
+			},
+			{
+				"name": "IsCurrent",
+				"type": "bit"
+			},
+			{
+				"name": "DateCreated",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "DimProduct"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

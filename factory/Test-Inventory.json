@@ -1,0 +1,15 @@
+{
+	"name": "Test-Inventory",
+	"location": "eastus",
+	"identity": {
+		"type": "SystemAssigned,UserAssigned",
+		"principalId": "a91c8407-2220-446c-ae13-ee0351a1f723",
+		"tenantId": "0e81f23b-8b67-4f1f-832b-ee8815c8ef62",
+		"userAssignedIdentities": {
+			"/subscriptions/89cee0ec-2e9e-4738-8b18-d3cc5a29c156/resourcegroups/PR_EVAL_BI/providers/Microsoft.ManagedIdentity/userAssignedIdentities/adf_mi_001": {
+				"clientId": "e58c486d-0cd7-4c68-9d36-7dd86c7bb622",
+				"principalId": "01074bce-ce0a-4853-ac71-ab4ba7951ded"
+			}
+		}
+	}
+}

@@ -1,0 +1,70 @@
+{
+	"name": "ItemInventory_Staging",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "EnactorDW_Staging",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"ConnectionStringKey": "EnactorBI-StagingDB-ConnectionString",
+				"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+			}
+		},
+		"parameters": {
+			"ConnectionStringKey": {
+				"type": "string",
+				"defaultValue": "EnactorBI-StagingDB-ConnectionString"
+			},
+			"KeyVault_URL": {
+				"type": "string",
+				"defaultValue": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+			}
+		},
+		"folder": {
+			"name": "Staging"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "Inventory_Item_Id",
+				"type": "varchar"
+			},
+			{
+				"name": "Inventory_Item_Type",
+				"type": "varchar"
+			},
+			{
+				"name": "Location_Id",
+				"type": "varchar"
+			},
+			{
+				"name": "Location_Area_Id",
+				"type": "varchar"
+			},
+			{
+				"name": "Container_Id",
+				"type": "varchar"
+			},
+			{
+				"name": "Inventory_Type",
+				"type": "varchar"
+			},
+			{
+				"name": "Value",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "Last_Updated",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "Iteminventorylevel_Staging"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

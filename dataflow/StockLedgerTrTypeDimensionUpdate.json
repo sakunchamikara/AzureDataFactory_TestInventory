@@ -1,0 +1,165 @@
+{
+	"name": "StockLedgerTrTypeDimensionUpdate",
+	"properties": {
+		"folder": {
+			"name": "Dimension Updates"
+		},
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "StockledgerTransactionType_Staging",
+						"type": "DatasetReference"
+					},
+					"name": "StockLedgerTrTypeStagingData"
+				},
+				{
+					"dataset": {
+						"referenceName": "DimStockledgerTransactionType",
+						"type": "DatasetReference"
+					},
+					"name": "DimStockLedgerTrType"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "DimStockledgerTransactionType",
+						"type": "DatasetReference"
+					},
+					"name": "InsertDimStockLedgerTrType"
+				},
+				{
+					"dataset": {
+						"referenceName": "DimStockledgerTransactionType",
+						"type": "DatasetReference"
+					},
+					"name": "UpdateDimStockLedgerTrType"
+				}
+			],
+			"transformations": [
+				{
+					"name": "DataSinceLastUpdateAndDataFromBegining"
+				},
+				{
+					"name": "SetIsCurrentToTrue"
+				},
+				{
+					"name": "DimNames"
+				},
+				{
+					"name": "LookupAgainstDimTable"
+				},
+				{
+					"name": "ExistingRows"
+				},
+				{
+					"name": "SetIsCurrentToFalse"
+				},
+				{
+					"name": "SetToUpdate"
+				},
+				{
+					"name": "DataSinceLastUpdate"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     LastUpdatedDate as string ('2000-01-01 00:00:00'),",
+				"     DimStockledgerTrTypeCount as integer (0)",
+				"}",
+				"source(output(",
+				"          Transaction_Type as string,",
+				"          Description as string,",
+				"          Data_Type_Id as string,",
+				"          last_updated as timestamp",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> StockLedgerTrTypeStagingData",
+				"source(output(",
+				"          Transaction_Type_Key as long,",
+				"          Transaction_Type as string,",
+				"          Description as string,",
+				"          Data_Type_Id as string,",
+				"          IsCurrent as boolean,",
+				"          DateCreated as timestamp",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> DimStockLedgerTrType",
+				"StockLedgerTrTypeStagingData filter($DimStockledgerTrTypeCount == 0  || ( $DimStockledgerTrTypeCount > 0  && last_updated > toTimestamp($LastUpdatedDate,'yyyy-MM-dd HH:mm:ss'))) ~> DataSinceLastUpdateAndDataFromBegining",
+				"DataSinceLastUpdateAndDataFromBegining derive(IsCurrent = true()) ~> SetIsCurrentToTrue",
+				"DimStockLedgerTrType select(mapColumn(",
+				"          DimTransaction_Type_Key = Transaction_Type_Key,",
+				"          DimTransaction_Type = Transaction_Type,",
+				"          DimDescription = Description,",
+				"          DimData_Type_Id = Data_Type_Id,",
+				"          DimIsCurrent = IsCurrent,",
+				"          DimDateCreated = DateCreated",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> DimNames",
+				"DataSinceLastUpdate, DimNames lookup(Transaction_Type == DimTransaction_Type,",
+				"     multiple: true,",
+				"     broadcast: 'auto')~> LookupAgainstDimTable",
+				"LookupAgainstDimTable filter(!isNull(DimTransaction_Type)) ~> ExistingRows",
+				"ExistingRows derive(DimIsCurrent = false()) ~> SetIsCurrentToFalse",
+				"SetIsCurrentToFalse alterRow(updateIf(1==1)) ~> SetToUpdate",
+				"DataSinceLastUpdateAndDataFromBegining filter($DimStockledgerTrTypeCount == 0 && isNull(Transaction_Type)) ~> DataSinceLastUpdate",
+				"SetIsCurrentToTrue sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          Transaction_Type_Key as long,",
+				"          Transaction_Type as string,",
+				"          Description as string,",
+				"          Data_Type_Id as string,",
+				"          IsCurrent as boolean,",
+				"          DateCreated as timestamp",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError',",
+				"     mapColumn(",
+				"          Transaction_Type,",
+				"          Description,",
+				"          Data_Type_Id,",
+				"          IsCurrent,",
+				"          DateCreated = last_updated",
+				"     )) ~> InsertDimStockLedgerTrType",
+				"SetToUpdate sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          Transaction_Type_Key as long,",
+				"          Transaction_Type as string,",
+				"          Description as string,",
+				"          Data_Type_Id as string,",
+				"          IsCurrent as boolean,",
+				"          DateCreated as timestamp",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:false,",
+				"     updateable:true,",
+				"     upsertable:false,",
+				"     keys:['Transaction_Type_Key'],",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError',",
+				"     mapColumn(",
+				"          IsCurrent = DimIsCurrent,",
+				"          Transaction_Type_Key = DimTransaction_Type_Key,",
+				"          DateCreated = last_updated",
+				"     )) ~> UpdateDimStockLedgerTrType"
+			]
+		}
+	}
+}

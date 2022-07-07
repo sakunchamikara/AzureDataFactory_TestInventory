@@ -1,0 +1,61 @@
+{
+	"name": "FactItemInventoryLevels",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "EnactorDW",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/",
+				"ConnectionStringKey": "EnactorBI-DataWarehouseDB-ConnectionString"
+			}
+		},
+		"folder": {
+			"name": "Facts"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "Inventory_Item_Id",
+				"type": "varchar"
+			},
+			{
+				"name": "Inventory_Item_Type",
+				"type": "varchar"
+			},
+			{
+				"name": "Location_Key",
+				"type": "bigint",
+				"precision": 19
+			},
+			{
+				"name": "Location_Area_Id",
+				"type": "varchar"
+			},
+			{
+				"name": "Container_Id",
+				"type": "varchar"
+			},
+			{
+				"name": "Inventory_Type",
+				"type": "varchar"
+			},
+			{
+				"name": "Value",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "DateCreated",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "FactItemInventoryLevel"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

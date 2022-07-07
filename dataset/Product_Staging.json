@@ -1,0 +1,24 @@
+{
+	"name": "Product_Staging",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "EnactorDW_Staging",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"ConnectionStringKey": "EnactorBI-StagingDB-ConnectionString",
+				"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+			}
+		},
+		"folder": {
+			"name": "Staging"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "Product_Staging"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

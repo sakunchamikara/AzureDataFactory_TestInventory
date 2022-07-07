@@ -1,0 +1,203 @@
+{
+	"name": "StockledgerTransactionUpdate",
+	"properties": {
+		"folder": {
+			"name": "Fact Updates"
+		},
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "StockledgerTransactions_Staging",
+						"type": "DatasetReference"
+					},
+					"name": "StockledgerTransactionStaging"
+				},
+				{
+					"dataset": {
+						"referenceName": "DimStockledgerTransactionType",
+						"type": "DatasetReference"
+					},
+					"name": "DimStockledgerTransactionType"
+				},
+				{
+					"dataset": {
+						"referenceName": "DimLocation",
+						"type": "DatasetReference"
+					},
+					"name": "DimLocation"
+				},
+				{
+					"dataset": {
+						"referenceName": "DimProduct",
+						"type": "DatasetReference"
+					},
+					"name": "DimProduct"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "FactStockLedgerTransactions",
+						"type": "DatasetReference"
+					},
+					"name": "WriteToFactStockledgerTransactionTable"
+				}
+			],
+			"transformations": [
+				{
+					"name": "DataSinceLastUpdateOrAllData"
+				},
+				{
+					"name": "DimStockledgerTrTypeCurrent"
+				},
+				{
+					"name": "LookupStockledgerTransactionType"
+				},
+				{
+					"name": "DimLocationCurrent"
+				},
+				{
+					"name": "LookupLocation"
+				},
+				{
+					"name": "DimProductCurrent"
+				},
+				{
+					"name": "LookupProduct"
+				},
+				{
+					"name": "SelectColumns"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     LastUpdatedDate as string ('2000-01-01 00:00:00'),",
+				"     FactStockledgerTransactionCount as integer (0)",
+				"}",
+				"source(output(",
+				"          Date as timestamp,",
+				"          Transaction_Type as string,",
+				"          Product_Id as string,",
+				"          Quantity as double,",
+				"          Cost as double,",
+				"          Retail_Ex_Tax as long,",
+				"          Retail_Inc_Tax as long,",
+				"          Location_Id as string,",
+				"          Product_Description as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> StockledgerTransactionStaging",
+				"source(output(",
+				"          Transaction_Type_Key as long,",
+				"          Transaction_Type as string,",
+				"          Description as string,",
+				"          Data_Type_Id as string,",
+				"          IsCurrent as boolean,",
+				"          DateCreated as timestamp",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> DimStockledgerTransactionType",
+				"source(output(",
+				"          Location_Key as long,",
+				"          location_id as string,",
+				"          Description as string,",
+				"          Town as string,",
+				"          CountryCode as string,",
+				"          CountryDescription as string,",
+				"          Region1 as string,",
+				"          Region1Name as string,",
+				"          Region2 as string,",
+				"          Region2Name as string,",
+				"          Region3 as string,",
+				"          Region3Name as string,",
+				"          IsCurrent as boolean,",
+				"          DateCreated as timestamp",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> DimLocation",
+				"source(output(",
+				"          Product_Key as long,",
+				"          product_id as string,",
+				"          Type as string,",
+				"          Description as string,",
+				"          Long_description as string,",
+				"          Image_URL as string,",
+				"          IsCurrent as boolean,",
+				"          DateCreated as timestamp",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> DimProduct",
+				"StockledgerTransactionStaging filter($FactStockledgerTransactionCount == 0  || ( $FactStockledgerTransactionCount > 0  && Date > toTimestamp($LastUpdatedDate,'yyyy-MM-dd HH:mm:ss'))) ~> DataSinceLastUpdateOrAllData",
+				"DimStockledgerTransactionType filter(IsCurrent==true()) ~> DimStockledgerTrTypeCurrent",
+				"DataSinceLastUpdateOrAllData, DimStockledgerTrTypeCurrent lookup(StockledgerTransactionStaging@Transaction_Type == DimStockledgerTransactionType@Transaction_Type,",
+				"     multiple: false,",
+				"     pickup: 'any',",
+				"     broadcast: 'auto')~> LookupStockledgerTransactionType",
+				"DimLocation filter(IsCurrent==true()) ~> DimLocationCurrent",
+				"LookupStockledgerTransactionType, DimLocationCurrent lookup(StockledgerTransactionStaging@Location_Id == DimLocation@location_id,",
+				"     multiple: false,",
+				"     pickup: 'any',",
+				"     broadcast: 'auto')~> LookupLocation",
+				"DimProduct filter(IsCurrent==true()) ~> DimProductCurrent",
+				"LookupLocation, DimProductCurrent lookup(StockledgerTransactionStaging@Product_Id == DimProduct@product_id,",
+				"     multiple: false,",
+				"     pickup: 'any',",
+				"     broadcast: 'auto')~> LookupProduct",
+				"LookupProduct select(mapColumn(",
+				"          Date,",
+				"          Quantity,",
+				"          Cost,",
+				"          Retail_Ex_Tax,",
+				"          Retail_Inc_Tax,",
+				"          Transaction_Type_Key,",
+				"          Location_Key,",
+				"          Image_URL,",
+				"          Product_Key",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> SelectColumns",
+				"SelectColumns sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          Date as timestamp,",
+				"          Transaction_Type_Key as long,",
+				"          Quantity as double,",
+				"          Cost as double,",
+				"          Retail_Ex_Tax as long,",
+				"          Retail_Inc_Tax as long,",
+				"          Product_Description as string,",
+				"          Product_Key as long,",
+				"          Location_Key as long",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError',",
+				"     mapColumn(",
+				"          Date,",
+				"          Transaction_Type_Key,",
+				"          Quantity,",
+				"          Cost,",
+				"          Retail_Ex_Tax,",
+				"          Retail_Inc_Tax,",
+				"          Product_Key,",
+				"          Location_Key",
+				"     )) ~> WriteToFactStockledgerTransactionTable"
+			]
+		}
+	}
+}

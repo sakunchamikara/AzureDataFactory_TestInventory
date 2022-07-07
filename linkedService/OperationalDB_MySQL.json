@@ -1,0 +1,41 @@
+{
+	"name": "OperationalDB_MySQL",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"parameters": {
+			"ConnectionStringKey": {
+				"type": "string",
+				"defaultValue": "xxx"
+			},
+			"KeyVault_URL": {
+				"type": "string",
+				"defaultValue": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+			}
+		},
+		"annotations": [],
+		"type": "MySql",
+		"typeProperties": {
+			"connectionString": {
+				"type": "AzureKeyVaultSecret",
+				"store": {
+					"referenceName": "Test_BIAzureKeyVault",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"KeyVault_URL": {
+							"value": "@linkedService().KeyVault_URL",
+							"type": "Expression"
+						}
+					}
+				},
+				"secretName": {
+					"value": "@linkedService().ConnectionStringKey",
+					"type": "Expression"
+				}
+			}
+		},
+		"connectVia": {
+			"referenceName": "AutoResolveIntegrationRuntime",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}

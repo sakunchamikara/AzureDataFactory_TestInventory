@@ -1,0 +1,43 @@
+{
+	"name": "StockledgerTransactionType_Staging",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "EnactorDW_Staging",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"ConnectionStringKey": "EnactorBI-StagingDB-ConnectionString",
+				"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+			}
+		},
+		"folder": {
+			"name": "Staging"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "Transaction_Type",
+				"type": "varchar"
+			},
+			{
+				"name": "Description",
+				"type": "varchar"
+			},
+			{
+				"name": "Data_Type_Id",
+				"type": "varchar"
+			},
+			{
+				"name": "last_updated",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "StockledgerTransactionTypes_Staging"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

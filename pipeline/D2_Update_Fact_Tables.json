@@ -1,0 +1,464 @@
+{
+	"name": "D2_Update_Fact_Tables",
+	"properties": {
+		"activities": [
+			{
+				"name": "Lookup Last Update Date",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "select max(UpdateDateTime) as LastSuccessfulUpdateDate\r\nfrom UpdateLog \r\nwhere UpdateResult = 'Success'\r\nand UpdateType = 'InventoryFact'\r\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DimInventoryType",
+						"type": "DatasetReference",
+						"parameters": {
+							"ConnectionStringKey": "EnactorBI-DataWarehouseDB-ConnectionString",
+							"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+						}
+					}
+				}
+			},
+			{
+				"name": "Create Update Log Entry",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Lookup Last Update Date",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "insert UpdateLog \r\nvalues(getdate(),'InventoryFact','Started',getdate());\r\nselect SCOPE_IDENTITY() as logRecord\r\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DimInventoryType",
+						"type": "DatasetReference",
+						"parameters": {
+							"ConnectionStringKey": "EnactorBI-DataWarehouseDB-ConnectionString",
+							"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+						}
+					}
+				}
+			},
+			{
+				"name": "Set Last Update Date",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Create Update Log Entry",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "LastUpdatedDate",
+					"value": {
+						"value": "@{formatDateTime(activity('Lookup Last Update Date').output.firstRow.LastSuccessfulUpdateDate,'yyyy-MM-dd HH:mm:ss')}",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "InventoryItemLevelsFact Update",
+				"type": "ExecuteDataFlow",
+				"dependsOn": [
+					{
+						"activity": "FactInventoryItemLevels Count",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "1.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataflow": {
+						"referenceName": "ItemInventoryLevelUpdate",
+						"type": "DataFlowReference",
+						"parameters": {
+							"LastUpdatedDate": {
+								"value": "'@{variables('LastUpdatedDate')}'",
+								"type": "Expression"
+							},
+							"FactItemInventoryLevelCount": {
+								"value": "@variables('FactInventoryItemLevel Count')",
+								"type": "Expression"
+							}
+						},
+						"datasetParameters": {
+							"ItemInventoryLevelStaging": {
+								"ConnectionStringKey": "@pipeline().parameters.StagingDBConnectionStringKey",
+								"KeyVault_URL": "@pipeline().parameters.KeyVault_URL"
+							},
+							"DimInventoryType": {
+								"ConnectionStringKey": "@pipeline().parameters.DataWarehouseDBConnectionStringKey",
+								"KeyVault_URL": "@pipeline().parameters.KeyVault_URL"
+							},
+							"DimLocation": {
+								"ConnectionStringKey": "EnactorBI-DataWarehouseDB-ConnectionString",
+								"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+							}
+						}
+					},
+					"compute": {
+						"coreCount": 8,
+						"computeType": "General"
+					},
+					"traceLevel": "Fine"
+				}
+			},
+			{
+				"name": "Complete Update Log Entry",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "InventoryItemLevelsFact Update",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "StockLedgerTransactionFact Update",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "update updateLog \nset UpdateResult = 'Success',\nLastUpdatedDate = getdate()\nwhere logid = @{activity('Create Update Log Entry').output.firstRow.logRecord};\n\nselect 0 res",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DimInventoryType",
+						"type": "DatasetReference",
+						"parameters": {
+							"ConnectionStringKey": "EnactorBI-DataWarehouseDB-ConnectionString",
+							"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+						}
+					}
+				}
+			},
+			{
+				"name": "StockLedgerTransactionFact Update",
+				"type": "ExecuteDataFlow",
+				"dependsOn": [
+					{
+						"activity": "FactStockLedgerTransaction Count",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "1.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataflow": {
+						"referenceName": "StockledgerTransactionUpdate",
+						"type": "DataFlowReference",
+						"parameters": {
+							"LastUpdatedDate": {
+								"value": "'@{variables('LastUpdatedDate')}'",
+								"type": "Expression"
+							},
+							"FactStockledgerTransactionCount": {
+								"value": "@variables('FactStockLedgerTransaction Count')",
+								"type": "Expression"
+							}
+						},
+						"datasetParameters": {
+							"StockledgerTransactionStaging": {
+								"ConnectionStringKey": {
+									"value": "@pipeline().parameters.StagingDBConnectionStringKey",
+									"type": "Expression"
+								},
+								"KeyVault_URL": {
+									"value": "@pipeline().parameters.KeyVault_URL",
+									"type": "Expression"
+								}
+							},
+							"DimStockledgerTransactionType": {
+								"ConnectionStringKey": {
+									"value": "@pipeline().parameters.DataWarehouseDBConnectionStringKey",
+									"type": "Expression"
+								},
+								"KeyVault_URL": {
+									"value": "@pipeline().parameters.KeyVault_URL",
+									"type": "Expression"
+								}
+							},
+							"DimLocation": {
+								"ConnectionStringKey": {
+									"value": "@pipeline().parameters.DataWarehouseDBConnectionStringKey",
+									"type": "Expression"
+								},
+								"KeyVault_URL": {
+									"value": "@pipeline().parameters.KeyVault_URL",
+									"type": "Expression"
+								}
+							},
+							"DimProduct": {
+								"ConnectionStringKey": {
+									"value": "@pipeline().parameters.DataWarehouseDBConnectionStringKey",
+									"type": "Expression"
+								},
+								"KeyVault_URL": {
+									"value": "@pipeline().parameters.KeyVault_URL",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					"compute": {
+						"coreCount": 8,
+						"computeType": "General"
+					},
+					"traceLevel": "Fine"
+				}
+			},
+			{
+				"name": "Check FactStockLedgerTransaction Count",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Set Last Update Date",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "select count(1) as stgCt from dbo.FactStockledgerTransactions",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "FactStockLedgerTransactions",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "FactStockLedgerTransaction Count",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Check FactStockLedgerTransaction Count",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "FactStockLedgerTransaction Count",
+					"value": {
+						"value": "@{activity('Check FactStockLedgerTransaction Count').output.firstRow.stgCt}",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Check FactItemInventoryLevels Count",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Set Last Update Date",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "select count(1) as invCt from dbo.FactItemInventoryLevel",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "FactItemInventoryLevels",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "FactInventoryItemLevels Count",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Check FactItemInventoryLevels Count",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "FactInventoryItemLevel Count",
+					"value": {
+						"value": "@{activity('Check FactItemInventoryLevels Count').output.firstRow.invCt}",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Failed Update Log Entry",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "StockLedgerTransactionFact Update",
+						"dependencyConditions": [
+							"Failed"
+						]
+					},
+					{
+						"activity": "InventoryItemLevelsFact Update",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "update updateLog \nset UpdateResult = 'Failed',\nLastUpdatedDate = getdate()\nwhere logid = @{activity('Create Update Log Entry').output.firstRow.logRecord};\n\nselect 0 res",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DimInventoryType",
+						"type": "DatasetReference",
+						"parameters": {
+							"ConnectionStringKey": "EnactorBI-DataWarehouseDB-ConnectionString",
+							"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+						}
+					}
+				}
+			}
+		],
+		"parameters": {
+			"KeyVault_URL": {
+				"type": "string",
+				"defaultValue": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+			},
+			"DataWarehouseDBConnectionStringKey": {
+				"type": "string",
+				"defaultValue": "EnactorBI-DataWarehouseDB-ConnectionString"
+			},
+			"StagingDBConnectionStringKey": {
+				"type": "string",
+				"defaultValue": "EnactorBI-StagingDB-ConnectionString"
+			}
+		},
+		"variables": {
+			"LastUpdateName": {
+				"type": "String"
+			},
+			"DimStockLedgerTrTypeCount": {
+				"type": "String"
+			},
+			"DimInventoryTypeCount": {
+				"type": "String"
+			},
+			"FactStockLedgerTransaction Count": {
+				"type": "String"
+			},
+			"FactInventoryItemLevel Count": {
+				"type": "String"
+			},
+			"LastUpdatedDate": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "StagingToDW"
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-07-06T08:34:59Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

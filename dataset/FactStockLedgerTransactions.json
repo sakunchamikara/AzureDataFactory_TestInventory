@@ -1,0 +1,70 @@
+{
+	"name": "FactStockLedgerTransactions",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "EnactorDW",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/",
+				"ConnectionStringKey": "EnactorBI-DataWarehouseDB-ConnectionString"
+			}
+		},
+		"folder": {
+			"name": "Facts"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "Date",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "Transaction_Type_Key",
+				"type": "bigint",
+				"precision": 19
+			},
+			{
+				"name": "Quantity",
+				"type": "float",
+				"precision": 15
+			},
+			{
+				"name": "Cost",
+				"type": "float",
+				"precision": 15
+			},
+			{
+				"name": "Retail_Ex_Tax",
+				"type": "bigint",
+				"precision": 19
+			},
+			{
+				"name": "Retail_Inc_Tax",
+				"type": "bigint",
+				"precision": 19
+			},
+			{
+				"name": "Product_Description",
+				"type": "varchar"
+			},
+			{
+				"name": "Product_Key",
+				"type": "bigint",
+				"precision": 19
+			},
+			{
+				"name": "Location_Key",
+				"type": "bigint",
+				"precision": 19
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "FactStockledgerTransactions"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

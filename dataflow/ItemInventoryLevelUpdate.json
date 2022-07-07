@@ -1,0 +1,186 @@
+{
+	"name": "ItemInventoryLevelUpdate",
+	"properties": {
+		"folder": {
+			"name": "Fact Updates"
+		},
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "ItemInventory_Staging",
+						"type": "DatasetReference"
+					},
+					"name": "ItemInventoryLevelStaging"
+				},
+				{
+					"dataset": {
+						"referenceName": "DimInventoryType",
+						"type": "DatasetReference"
+					},
+					"name": "DimInventoryType"
+				},
+				{
+					"dataset": {
+						"referenceName": "DimLocation",
+						"type": "DatasetReference"
+					},
+					"name": "DimLocation"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "FactItemInventoryLevels",
+						"type": "DatasetReference"
+					},
+					"name": "WriteToFactItemInventoryLevelTable"
+				}
+			],
+			"transformations": [
+				{
+					"name": "DataSinceLastUpdateOrAllData"
+				},
+				{
+					"name": "DimInventoryTypeCurrent"
+				},
+				{
+					"name": "LookupInventoryType"
+				},
+				{
+					"name": "DimLocationCurrent"
+				},
+				{
+					"name": "LookupLocation"
+				},
+				{
+					"name": "SelectColumns"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     LastUpdatedDate as string ('2000-01-01 00:00:00'),",
+				"     FactItemInventoryLevelCount as integer (0)",
+				"}",
+				"source(output(",
+				"          Inventory_Item_Id as string,",
+				"          Inventory_Item_Type as string,",
+				"          Location_Id as string,",
+				"          Location_Area_Id as string,",
+				"          Container_Id as string,",
+				"          Inventory_Type as string,",
+				"          Value as integer,",
+				"          Last_Updated as timestamp",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> ItemInventoryLevelStaging",
+				"source(output(",
+				"          Inventory_Type_Key as long,",
+				"          Inventory_Type as string,",
+				"          Description as string,",
+				"          IsCurrent as boolean,",
+				"          DateCreated as timestamp",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> DimInventoryType",
+				"source(output(",
+				"          Location_Key as long,",
+				"          location_id as string,",
+				"          Description as string,",
+				"          Town as string,",
+				"          CountryCode as string,",
+				"          CountryDescription as string,",
+				"          Region1 as string,",
+				"          Region1Name as string,",
+				"          Region2 as string,",
+				"          Region2Name as string,",
+				"          Region3 as string,",
+				"          Region3Name as string,",
+				"          IsCurrent as boolean,",
+				"          DateCreated as timestamp",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> DimLocation",
+				"ItemInventoryLevelStaging filter($FactItemInventoryLevelCount == 0  || ( $FactItemInventoryLevelCount > 0  && Last_Updated > toTimestamp($LastUpdatedDate,'yyyy-MM-dd HH:mm:ss'))) ~> DataSinceLastUpdateOrAllData",
+				"DimInventoryType filter(IsCurrent==true()) ~> DimInventoryTypeCurrent",
+				"DataSinceLastUpdateOrAllData, DimInventoryTypeCurrent lookup(ItemInventoryLevelStaging@Inventory_Type == DimInventoryType@Inventory_Type,",
+				"     multiple: false,",
+				"     pickup: 'any',",
+				"     broadcast: 'auto')~> LookupInventoryType",
+				"DimLocation filter(IsCurrent==true()) ~> DimLocationCurrent",
+				"LookupInventoryType, DimLocationCurrent lookup(ItemInventoryLevelStaging@Location_Id == DimLocation@location_id,",
+				"     multiple: false,",
+				"     pickup: 'any',",
+				"     broadcast: 'auto')~> LookupLocation",
+				"LookupLocation select(mapColumn(",
+				"          Inventory_Item_Id,",
+				"          Inventory_Item_Type,",
+				"          Location_Id = ItemInventoryLevelStaging@Location_Id,",
+				"          Location_Area_Id,",
+				"          Container_Id,",
+				"          Inventory_Type = ItemInventoryLevelStaging@Inventory_Type,",
+				"          Value,",
+				"          Last_Updated,",
+				"          Inventory_Type_Key,",
+				"          Inventory_Type = DimInventoryType@Inventory_Type,",
+				"          Description = DimInventoryType@Description,",
+				"          IsCurrent = DimInventoryType@IsCurrent,",
+				"          DateCreated = DimInventoryType@DateCreated,",
+				"          Location_Key,",
+				"          location_id = DimLocation@location_id,",
+				"          Description = DimLocation@Description,",
+				"          Town,",
+				"          CountryCode,",
+				"          CountryDescription,",
+				"          Region1,",
+				"          Region1Name,",
+				"          Region2,",
+				"          Region2Name,",
+				"          Region3,",
+				"          Region3Name,",
+				"          IsCurrent = DimLocation@IsCurrent,",
+				"          DateCreated = DimLocation@DateCreated",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> SelectColumns",
+				"SelectColumns sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          Inventory_Item_Id as string,",
+				"          Inventory_Item_Type as string,",
+				"          Location_Key as long,",
+				"          Location_Area_Id as string,",
+				"          Container_Id as string,",
+				"          Inventory_Type as string,",
+				"          Value as integer,",
+				"          DateCreated as timestamp",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError',",
+				"     mapColumn(",
+				"          Inventory_Item_Id,",
+				"          Inventory_Item_Type,",
+				"          Location_Key,",
+				"          Location_Area_Id,",
+				"          Container_Id,",
+				"          Inventory_Type,",
+				"          Value,",
+				"          DateCreated",
+				"     )) ~> WriteToFactItemInventoryLevelTable"
+			]
+		}
+	}
+}

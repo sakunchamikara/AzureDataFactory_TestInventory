@@ -1,0 +1,64 @@
+{
+	"name": "DimInventoryType",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "EnactorDW",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"KeyVault_URL": {
+					"value": "@dataset().KeyVault_URL",
+					"type": "Expression"
+				},
+				"ConnectionStringKey": {
+					"value": "@dataset().ConnectionStringKey",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"ConnectionStringKey": {
+				"type": "string",
+				"defaultValue": "EnactorBI-DataWarehouseDB-ConnectionString"
+			},
+			"KeyVault_URL": {
+				"type": "string",
+				"defaultValue": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+			}
+		},
+		"folder": {
+			"name": "Dimensions"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "Inventory_Type_Key",
+				"type": "bigint",
+				"precision": 19
+			},
+			{
+				"name": "Inventory_Type",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Description",
+				"type": "nvarchar"
+			},
+			{
+				"name": "IsCurrent",
+				"type": "bit"
+			},
+			{
+				"name": "DateCreated",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "DimInventoryType"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

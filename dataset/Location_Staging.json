@@ -1,0 +1,87 @@
+{
+	"name": "Location_Staging",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "EnactorDW_Staging",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"ConnectionStringKey": "EnactorBI-StagingDB-ConnectionString",
+				"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+			}
+		},
+		"folder": {
+			"name": "Staging"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "location_id",
+				"type": "nvarchar"
+			},
+			{
+				"name": "location_type",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Description",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Street1",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Street2",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Town",
+				"type": "nvarchar"
+			},
+			{
+				"name": "CountryCode",
+				"type": "nvarchar"
+			},
+			{
+				"name": "CountryDescription",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Region1",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Region1Name",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Region2",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Region2Name",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Region3",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Region3Name",
+				"type": "nvarchar"
+			},
+			{
+				"name": "last_updated",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "Location_Staging"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

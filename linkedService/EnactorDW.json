@@ -1,0 +1,41 @@
+{
+	"name": "EnactorDW",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"parameters": {
+			"KeyVault_URL": {
+				"type": "string",
+				"defaultValue": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+			},
+			"ConnectionStringKey": {
+				"type": "string",
+				"defaultValue": "EnactorBI-DataWarehouseDB-ConnectionString"
+			}
+		},
+		"annotations": [],
+		"type": "AzureSqlDatabase",
+		"typeProperties": {
+			"connectionString": {
+				"type": "AzureKeyVaultSecret",
+				"store": {
+					"referenceName": "Test_BIAzureKeyVault",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"KeyVault_URL": {
+							"value": "@linkedService().KeyVault_URL",
+							"type": "Expression"
+						}
+					}
+				},
+				"secretName": {
+					"value": "@linkedService().ConnectionStringKey",
+					"type": "Expression"
+				}
+			}
+		},
+		"connectVia": {
+			"referenceName": "AutoResolveIntegrationRuntime",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}

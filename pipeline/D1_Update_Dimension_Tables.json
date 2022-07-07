@@ -1,0 +1,397 @@
+{
+	"name": "D1_Update_Dimension_Tables",
+	"properties": {
+		"activities": [
+			{
+				"name": "Lookup Last Update Date",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "Select max(UpdateDateTime) as LastSuccessfulUpdateDate from UpdateLog where UpdateType = 'InventoryDimension' and UpdateResult = 'Success'",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DimInventoryType",
+						"type": "DatasetReference",
+						"parameters": {
+							"ConnectionStringKey": "EnactorBI-DataWarehouseDB-ConnectionString",
+							"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+						}
+					}
+				}
+			},
+			{
+				"name": "Create Update Log Entry",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Lookup Last Update Date",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "insert UpdateLog \r\nvalues(getdate(),'InventoryDimension','Started',getdate());\r\nselect SCOPE_IDENTITY() as logRecord\r\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DimInventoryType",
+						"type": "DatasetReference",
+						"parameters": {
+							"ConnectionStringKey": "EnactorBI-DataWarehouseDB-ConnectionString",
+							"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+						}
+					}
+				}
+			},
+			{
+				"name": "Set Last Update Date",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Create Update Log Entry",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "LastUpdateName",
+					"value": {
+						"value": "@{formatDateTime(activity('Lookup Last Update Date').output.firstRow.LastSuccessfulUpdateDate,'yyyy-MM-dd HH:mm:ss')}",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "InventoryTypeDimensionUpdate",
+				"type": "ExecuteDataFlow",
+				"dependsOn": [
+					{
+						"activity": "DimInventoryType Count",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "1.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataflow": {
+						"referenceName": "InventoryTypeDimensionUpdate",
+						"type": "DataFlowReference",
+						"parameters": {
+							"LastUpdatedDate": {
+								"value": "'@{variables('LastUpdateName')}'",
+								"type": "Expression"
+							},
+							"DimInventoryTypeCount": {
+								"value": "@variables('DimInventoryTypeCount')",
+								"type": "Expression"
+							}
+						},
+						"datasetParameters": {
+							"InventoryTypeStagingData": {
+								"ConnectionStringKey": "EnactorBI-StagingDB-ConnectionString",
+								"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+							},
+							"DimInventoryType": {
+								"ConnectionStringKey": "EnactorBI-DataWarehouseDB-ConnectionString",
+								"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+							},
+							"InsertDimInventoryType": {
+								"ConnectionStringKey": "EnactorBI-DataWarehouseDB-ConnectionString",
+								"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+							},
+							"UpdateDimInventoryType": {
+								"ConnectionStringKey": "EnactorBI-DataWarehouseDB-ConnectionString",
+								"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+							}
+						}
+					},
+					"compute": {
+						"coreCount": 8,
+						"computeType": "General"
+					},
+					"traceLevel": "Fine"
+				}
+			},
+			{
+				"name": "Complete Update Log Entry",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "InventoryTypeDimensionUpdate",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "StockLedgerTrTypeDimensionUpdate",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "update updateLog \r\nset UpdateResult = 'Success',\r\nLastUpdatedDate = getdate()\r\nwhere logid = @{activity('Create Update Log Entry').output.firstRow.logRecord};\r\n\r\nselect 0 res",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DimInventoryType",
+						"type": "DatasetReference",
+						"parameters": {
+							"ConnectionStringKey": "EnactorBI-DataWarehouseDB-ConnectionString",
+							"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+						}
+					}
+				}
+			},
+			{
+				"name": "StockLedgerTrTypeDimensionUpdate",
+				"type": "ExecuteDataFlow",
+				"dependsOn": [
+					{
+						"activity": "DimStockLedgerTrType Count",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "1.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataflow": {
+						"referenceName": "StockLedgerTrTypeDimensionUpdate",
+						"type": "DataFlowReference",
+						"parameters": {
+							"LastUpdatedDate": {
+								"value": "'@{variables('LastUpdateName')}'",
+								"type": "Expression"
+							},
+							"DimStockledgerTrTypeCount": {
+								"value": "@variables('DimStockLedgerTrTypeCount')",
+								"type": "Expression"
+							}
+						},
+						"datasetParameters": {
+							"DimStockLedgerTrType": {
+								"ConnectionStringKey": "EnactorBI-DataWarehouseDB-ConnectionString",
+								"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+							},
+							"InsertDimStockLedgerTrType": {
+								"ConnectionStringKey": "EnactorBI-DataWarehouseDB-ConnectionString",
+								"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+							},
+							"UpdateDimStockLedgerTrType": {
+								"ConnectionStringKey": "EnactorBI-DataWarehouseDB-ConnectionString",
+								"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+							}
+						}
+					},
+					"compute": {
+						"coreCount": 8,
+						"computeType": "General"
+					},
+					"traceLevel": "Fine"
+				}
+			},
+			{
+				"name": "Check DimStockLedgerTrType count",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Set Last Update Date",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "select count(1) as stgCt from dbo.DimStockLedgerTransactionType",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DimStockledgerTransactionType",
+						"type": "DatasetReference",
+						"parameters": {
+							"ConnectionStringKey": "EnactorBI-DataWarehouseDB-ConnectionString",
+							"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+						}
+					}
+				}
+			},
+			{
+				"name": "DimStockLedgerTrType Count",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Check DimStockLedgerTrType count",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "DimStockLedgerTrTypeCount",
+					"value": {
+						"value": "@{activity('Check DimStockLedgerTrType count').output.firstRow.stgCt}",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Check DimInventoryType count",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Set Last Update Date",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "select count(1) as invCt from dbo.DimInventoryType",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DimInventoryType",
+						"type": "DatasetReference",
+						"parameters": {
+							"ConnectionStringKey": "EnactorBI-DataWarehouseDB-ConnectionString",
+							"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+						}
+					}
+				}
+			},
+			{
+				"name": "DimInventoryType Count",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Check DimInventoryType count",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "DimInventoryTypeCount",
+					"value": {
+						"value": "@{activity('Check DimInventoryType count').output.firstRow.invCt}",
+						"type": "Expression"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"KeyVault_URL": {
+				"type": "string",
+				"defaultValue": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+			},
+			"DataWarehouseDBConnectionStringKey": {
+				"type": "string",
+				"defaultValue": "EnactorBI-DataWarehouseDB-ConnectionString"
+			},
+			"StagingDBConnectionStringKey": {
+				"type": "string",
+				"defaultValue": "EnactorBI-StagingDB-ConnectionString"
+			}
+		},
+		"variables": {
+			"LastUpdateName": {
+				"type": "String"
+			},
+			"DimStockLedgerTrTypeCount": {
+				"type": "String"
+			},
+			"DimInventoryTypeCount": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "StagingToDW"
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-07-06T08:34:58Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

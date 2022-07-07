@@ -1,0 +1,712 @@
+{
+	"name": "Copy_Fact_Data_To_Staging",
+	"properties": {
+		"activities": [
+			{
+				"name": "Fetch Last Extract Date",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "select max(ExtractDateTime) as LastSuccessfulExtractDate\r\nfrom ExtractLog \r\nwhere ExtractResult = 'Success'\r\nand ExtractType = 'InventoryFact'",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DummyExatractLog_Staging",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "Set Last Extract Date",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Fetch Last Extract Date",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "LastExtractDate",
+					"value": {
+						"value": "@{activity('Fetch Last Extract Date').output.firstRow.LastSuccessfulExtractDate}",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Create Extract Log",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Set Last Extract Date",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "insert ExtractLog \r\nvalues(getdate(),'InventoryFact','Started',getdate());\r\nselect SCOPE_IDENTITY() as logRecord",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DummyExatractLog_Staging",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "If New ItemInventory Data",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Check For New ItemInventoryTransaction Data",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@greater(activity('Check For New ItemInventoryTransaction Data').output.firstRow.ct,0)",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Copy item inventory Data",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "MySqlSource",
+									"query": {
+										"value": "select Inventory_Item_Id,\nInventory_Item_Type,\nLocation_Id,\nLocation_Area_Id,\nContainer_Id,\nInventory_Type,\nValue,\nLast_Updated\nfrom iteminventorylevels \nwhere (@{variables('ItemInventoryStagingCount')} = 0) or (@{variables('ItemInventoryStagingCount')} > 0 and last_updated > '@{formatDateTime(variables('LastExtractDate'),'yyyy-MM-dd hh:mm:ss')}') ;",
+										"type": "Expression"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "upsert",
+									"upsertSettings": {
+										"useTempDB": true,
+										"keys": [
+											"Inventory_Item_Id",
+											"Inventory_Item_Type",
+											"Location_Id",
+											"Location_Area_Id",
+											"Container_Id",
+											"Inventory_Type"
+										]
+									},
+									"sqlWriterUseTableLock": false,
+									"disableMetricsCollection": false
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "Inventory_Item_Id"
+											},
+											"sink": {
+												"name": "Inventory_Item_Id",
+												"type": "String",
+												"physicalType": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "Inventory_Item_Type"
+											},
+											"sink": {
+												"name": "Inventory_Item_Type",
+												"type": "String",
+												"physicalType": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "Location_Id"
+											},
+											"sink": {
+												"name": "Location_Id",
+												"type": "String",
+												"physicalType": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "Location_Area_Id"
+											},
+											"sink": {
+												"name": "Location_Area_Id",
+												"type": "String",
+												"physicalType": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "Container_Id"
+											},
+											"sink": {
+												"name": "Container_Id",
+												"type": "String",
+												"physicalType": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "Inventory_Type"
+											},
+											"sink": {
+												"name": "Inventory_Type",
+												"type": "String",
+												"physicalType": "varchar"
+											}
+										},
+										{
+											"source": {
+												"name": "Value"
+											},
+											"sink": {
+												"name": "Value",
+												"type": "Int32",
+												"physicalType": "int"
+											}
+										},
+										{
+											"source": {
+												"name": "Last_Updated"
+											},
+											"sink": {
+												"name": "Last_Updated",
+												"type": "DateTime",
+												"physicalType": "datetime"
+											}
+										}
+									],
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "Operational_DB",
+									"type": "DatasetReference",
+									"parameters": {
+										"ConnectionStringKey": {
+											"value": "@pipeline().parameters.OperationalDBConnectionStringKey",
+											"type": "Expression"
+										},
+										"KeyVault_URL": {
+											"value": "@pipeline().parameters.KeyVault_URL",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "ItemInventory_Staging",
+									"type": "DatasetReference",
+									"parameters": {
+										"ConnectionStringKey": "EnactorBI-StagingDB-ConnectionString",
+										"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+									}
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "Update Extract Log Entry",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "If New ItemInventory Data",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "If New StockLedger Data",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "update ExtractLog \nset ExtractResult = 'Success',\nLastUpdatedDate = getdate()\nwhere logid = @{activity('Create Extract Log').output.firstRow.logRecord};\n\nselect 0 res",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DummyExatractLog_Staging",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "Check For New StockLedgerTransaction Data",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "StockLedgerTransactionStaging Table Count",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "MySqlSource",
+						"query": {
+							"value": "select count(1) as ct from enactorem.stockledgertransactions\nwhere (@{variables('StockLedgerTransactionCount')} = 0) or (@{variables('StockLedgerTransactionCount')} > 0 and Date > '@{formatDateTime(variables('LastExtractDate'),'yyyy-MM-dd hh:mm:ss')}') ;",
+							"type": "Expression"
+						}
+					},
+					"dataset": {
+						"referenceName": "Operational_DB",
+						"type": "DatasetReference",
+						"parameters": {
+							"ConnectionStringKey": {
+								"value": "@pipeline().parameters.OperationalDBConnectionStringKey",
+								"type": "Expression"
+							},
+							"KeyVault_URL": {
+								"value": "@pipeline().parameters.KeyVault_URL",
+								"type": "Expression"
+							}
+						}
+					}
+				}
+			},
+			{
+				"name": "If New StockLedger Data",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Check For New StockLedgerTransaction Data",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@greater(activity('Check For New StockLedgerTransaction Data').output.firstRow.ct,0)",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Copy Stock ledger Transaction Data_copy1",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "MySqlSource",
+									"query": {
+										"value": "select s.ID,\ns.Date,\ns.Transaction_Type,\ns.Product_Id,\np.Description,\ns.Location_Id,\ns.Quantity,\ns.Cost,\ns.Retail_Ex_Tax,\ns.Retail_Inc_Tax\nfrom stockledgertransactions s\ninner join products p on s.Product_Id = p.Product_Id \nwhere (@{variables('StockLedgerTransactionCount')} = 0) or (@{variables('StockLedgerTransactionCount')} > 0 and Date > '@{formatDateTime(variables('LastExtractDate'),'yyyy-MM-dd hh:mm:ss')}') ;",
+										"type": "Expression"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "upsert",
+									"upsertSettings": {
+										"useTempDB": true,
+										"keys": [
+											"ID"
+										]
+									},
+									"sqlWriterUseTableLock": false,
+									"disableMetricsCollection": false
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "ID"
+											},
+											"sink": {
+												"name": "ID"
+											}
+										},
+										{
+											"source": {
+												"name": "Date"
+											},
+											"sink": {
+												"name": "Date",
+												"scale": 3,
+												"precision": 23
+											}
+										},
+										{
+											"source": {
+												"name": "Transaction_Type"
+											},
+											"sink": {
+												"name": "Transaction_Type"
+											}
+										},
+										{
+											"source": {
+												"name": "Product_Id"
+											},
+											"sink": {
+												"name": "Product_Id"
+											}
+										},
+										{
+											"source": {
+												"name": "Location_Id"
+											},
+											"sink": {
+												"name": "Location_Id"
+											}
+										},
+										{
+											"source": {
+												"name": "Quantity"
+											},
+											"sink": {
+												"name": "Quantity",
+												"precision": 15
+											}
+										},
+										{
+											"source": {
+												"name": "Cost"
+											},
+											"sink": {
+												"name": "Cost",
+												"precision": 15
+											}
+										},
+										{
+											"source": {
+												"name": "Retail_Ex_Tax"
+											},
+											"sink": {
+												"name": "Retail_Ex_Tax",
+												"precision": 19
+											}
+										},
+										{
+											"source": {
+												"name": "Retail_Inc_Tax"
+											},
+											"sink": {
+												"name": "Retail_Inc_Tax",
+												"precision": 19
+											}
+										},
+										{
+											"source": {
+												"name": "Description"
+											},
+											"sink": {
+												"name": "Product_Description"
+											}
+										}
+									],
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "Operational_DB",
+									"type": "DatasetReference",
+									"parameters": {
+										"ConnectionStringKey": {
+											"value": "@pipeline().parameters.OperationalDBConnectionStringKey",
+											"type": "Expression"
+										},
+										"KeyVault_URL": {
+											"value": "@pipeline().parameters.KeyVault_URL",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "StockledgerTransactions_Staging",
+									"type": "DatasetReference",
+									"parameters": {
+										"ConnectionStringKey": "EnactorBI-StagingDB-ConnectionString",
+										"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+									}
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "Check For New ItemInventoryTransaction Data",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "ItemInventoryStaging Table Count",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "MySqlSource",
+						"query": {
+							"value": "select count(1) as ct from enactorem.iteminventorylevels\nwhere (@{variables('ItemInventoryStagingCount')} = 0) or (@{variables('ItemInventoryStagingCount')} > 0 and last_updated > '@{formatDateTime(variables('LastExtractDate'),'yyyy-MM-dd hh:mm:ss')}') ;",
+							"type": "Expression"
+						}
+					},
+					"dataset": {
+						"referenceName": "Operational_DB",
+						"type": "DatasetReference",
+						"parameters": {
+							"ConnectionStringKey": {
+								"value": "@pipeline().parameters.OperationalDBConnectionStringKey",
+								"type": "Expression"
+							},
+							"KeyVault_URL": {
+								"value": "@pipeline().parameters.KeyVault_URL",
+								"type": "Expression"
+							}
+						}
+					}
+				}
+			},
+			{
+				"name": "Check StockLedgerTransactionStaging count",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Create Extract Log",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "select count(1) as stgCt from dbo.StockledgerTransactions_Staging",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "StockledgerTransactions_Staging",
+						"type": "DatasetReference",
+						"parameters": {
+							"ConnectionStringKey": "EnactorBI-StagingDB-ConnectionString",
+							"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+						}
+					}
+				}
+			},
+			{
+				"name": "StockLedgerTransactionStaging Table Count",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Check StockLedgerTransactionStaging count",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "StockLedgerTransactionCount",
+					"value": {
+						"value": "@{activity('Check StockLedgerTransactionStaging count').output.firstRow.stgCt}",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Check ItemInventoryStaging count",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Create Extract Log",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "select count(1) as stgCt from dbo.Iteminventorylevel_Staging",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ItemInventory_Staging",
+						"type": "DatasetReference",
+						"parameters": {
+							"ConnectionStringKey": "EnactorBI-StagingDB-ConnectionString",
+							"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+						}
+					}
+				}
+			},
+			{
+				"name": "ItemInventoryStaging Table Count",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Check ItemInventoryStaging count",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "ItemInventoryStagingCount",
+					"value": {
+						"value": "@{activity('Check ItemInventoryStaging count').output.firstRow.stgCt}",
+						"type": "Expression"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"StagingDBConnectionStringKey": {
+				"type": "string",
+				"defaultValue": "EnactorBI-StagingDB-ConnectionString"
+			},
+			"OperationalDBConnectionStringKey": {
+				"type": "string",
+				"defaultValue": "Enactor-OperationalDB-ConnectionString"
+			},
+			"KeyVault_URL": {
+				"type": "string",
+				"defaultValue": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+			}
+		},
+		"variables": {
+			"LastExtractDate": {
+				"type": "String"
+			},
+			"StockLedgerTransactionCount": {
+				"type": "String"
+			},
+			"StockLedgerTransactionTypeCount": {
+				"type": "String"
+			},
+			"ItemInventoryStagingCount": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "OperationalToStaging"
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-07-04T10:50:02Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}
