@@ -1,0 +1,1019 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "Test-Inventory"
+		},
+		"EnactorDW_Staging_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'EnactorDW_Staging'"
+		},
+		"Test_BIAzureKeyVault_properties_typeProperties_baseUrl": {
+			"type": "string",
+			"defaultValue": "@{linkedService().KeyVault_URL}"
+		},
+		"EnactorDW_properties_typeProperties_connectionString_secretName": {
+			"type": "string",
+			"defaultValue": "@linkedService().ConnectionStringKey"
+		},
+		"OperationalDB_MySQL_properties_typeProperties_connectionString_secretName": {
+			"type": "string",
+			"defaultValue": "@linkedService().ConnectionStringKey"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/EnactorDW_Staging')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"ConnectionStringKey": {
+						"type": "string",
+						"defaultValue": "EnactorBI-StagingDB-ConnectionString"
+					},
+					"KeyVault_URL": {
+						"type": "string",
+						"defaultValue": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"connectionString": "[parameters('EnactorDW_Staging_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/adf_mi_001')]",
+			"type": "Microsoft.DataFactory/factories/credentials",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "ManagedIdentity",
+				"typeProperties": {
+					"resourceId": "/subscriptions/89cee0ec-2e9e-4738-8b18-d3cc5a29c156/resourceGroups/PR_EVAL_BI/providers/Microsoft.ManagedIdentity/userAssignedIdentities/adf_mi_001"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/default')]",
+			"type": "Microsoft.DataFactory/factories/managedVirtualNetworks",
+			"apiVersion": "2018-06-01",
+			"properties": {},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AvailableSales_Staging')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "EnactorDW_Staging",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"ConnectionStringKey": "EnactorBI-StagingDB-ConnectionString",
+						"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+					}
+				},
+				"folder": {
+					"name": "Staging"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "Id",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "Inventory_Item_Id",
+						"type": "varchar"
+					},
+					{
+						"name": "Inventory_Item_Type",
+						"type": "varchar"
+					},
+					{
+						"name": "Value",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "Description",
+						"type": "varchar"
+					},
+					{
+						"name": "LocationId",
+						"type": "varchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "AvailableSaleStaging"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/EnactorDW_Staging')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Currencies_Staging')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "EnactorDW_Staging",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"ConnectionStringKey": "EnactorBI-StagingDB-ConnectionString",
+						"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+					}
+				},
+				"folder": {
+					"name": "Staging"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "ID",
+						"type": "varchar"
+					},
+					{
+						"name": "Currency_Id",
+						"type": "varchar"
+					},
+					{
+						"name": "Description",
+						"type": "varchar"
+					},
+					{
+						"name": "Last_Updated",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "Currencies_Staging"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/EnactorDW_Staging')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DummyExatractLog_Staging')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "EnactorDW_Staging",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"ConnectionStringKey": "EnactorBI-StagingDB-ConnectionString",
+						"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+					}
+				},
+				"folder": {
+					"name": "Staging"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "DummyExtractLog"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/EnactorDW_Staging')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/InventoryType_Staging')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "EnactorDW_Staging",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"ConnectionStringKey": "@dataset().ConnectionStringKey",
+						"KeyVault_URL": "@dataset().KeyVault_URL"
+					}
+				},
+				"parameters": {
+					"ConnectionStringKey": {
+						"type": "string",
+						"defaultValue": "EnactorBI-StagingDB-ConnectionString"
+					},
+					"KeyVault_URL": {
+						"type": "string",
+						"defaultValue": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+					}
+				},
+				"folder": {
+					"name": "Staging"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "ID",
+						"type": "varchar"
+					},
+					{
+						"name": "Description",
+						"type": "varchar"
+					},
+					{
+						"name": "Inventory_Type",
+						"type": "varchar"
+					},
+					{
+						"name": "last_updated",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "Inventorytype_Staging"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/EnactorDW_Staging')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ItemInventory_Staging')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "EnactorDW_Staging",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"ConnectionStringKey": "EnactorBI-StagingDB-ConnectionString",
+						"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+					}
+				},
+				"parameters": {
+					"ConnectionStringKey": {
+						"type": "string",
+						"defaultValue": "EnactorBI-StagingDB-ConnectionString"
+					},
+					"KeyVault_URL": {
+						"type": "string",
+						"defaultValue": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+					}
+				},
+				"folder": {
+					"name": "Staging"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "Inventory_Item_Id",
+						"type": "varchar"
+					},
+					{
+						"name": "Inventory_Item_Type",
+						"type": "varchar"
+					},
+					{
+						"name": "Location_Id",
+						"type": "varchar"
+					},
+					{
+						"name": "Location_Area_Id",
+						"type": "varchar"
+					},
+					{
+						"name": "Container_Id",
+						"type": "varchar"
+					},
+					{
+						"name": "Inventory_Type",
+						"type": "varchar"
+					},
+					{
+						"name": "Value",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "Last_Updated",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "Iteminventorylevel_Staging"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/EnactorDW_Staging')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Location_Staging')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "EnactorDW_Staging",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"ConnectionStringKey": "EnactorBI-StagingDB-ConnectionString",
+						"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+					}
+				},
+				"folder": {
+					"name": "Staging"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "location_id",
+						"type": "nvarchar"
+					},
+					{
+						"name": "location_type",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Description",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Street1",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Street2",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Town",
+						"type": "nvarchar"
+					},
+					{
+						"name": "CountryCode",
+						"type": "nvarchar"
+					},
+					{
+						"name": "CountryDescription",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Region1",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Region1Name",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Region2",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Region2Name",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Region3",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Region3Name",
+						"type": "nvarchar"
+					},
+					{
+						"name": "last_updated",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "Location_Staging"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/EnactorDW_Staging')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Product_Staging')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "EnactorDW_Staging",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"ConnectionStringKey": "EnactorBI-StagingDB-ConnectionString",
+						"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+					}
+				},
+				"folder": {
+					"name": "Staging"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "Product_Staging"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/EnactorDW_Staging')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ReasonTypes_Staging')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "EnactorDW_Staging",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"ConnectionStringKey": "EnactorBI-StagingDB-ConnectionString",
+						"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+					}
+				},
+				"folder": {
+					"name": "Staging"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "ID",
+						"type": "varchar"
+					},
+					{
+						"name": "Type_Id",
+						"type": "varchar"
+					},
+					{
+						"name": "Description",
+						"type": "varchar"
+					},
+					{
+						"name": "Included_In_Weekday",
+						"type": "tinyint",
+						"precision": 3
+					},
+					{
+						"name": "Last_Updated",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "ReasonTypes_Staging"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/EnactorDW_Staging')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Reasons_Staging')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "EnactorDW_Staging",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"ConnectionStringKey": "EnactorBI-StagingDB-ConnectionString",
+						"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+					}
+				},
+				"folder": {
+					"name": "Staging"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "ID",
+						"type": "varchar"
+					},
+					{
+						"name": "Reason_Id",
+						"type": "varchar"
+					},
+					{
+						"name": "Parent_Reason_Id",
+						"type": "varchar"
+					},
+					{
+						"name": "Reason_Type",
+						"type": "varchar"
+					},
+					{
+						"name": "Description",
+						"type": "varchar"
+					},
+					{
+						"name": "Group_Id",
+						"type": "varchar"
+					},
+					{
+						"name": "Group_Type_Id",
+						"type": "varchar"
+					},
+					{
+						"name": "Group_Hierarchy_Id",
+						"type": "varchar"
+					},
+					{
+						"name": "Last_Updated",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "Reasons_Staging"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/EnactorDW_Staging')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/StockledgerTransactionType_Staging')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "EnactorDW_Staging",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"ConnectionStringKey": "EnactorBI-StagingDB-ConnectionString",
+						"KeyVault_URL": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+					}
+				},
+				"folder": {
+					"name": "Staging"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "Transaction_Type",
+						"type": "varchar"
+					},
+					{
+						"name": "Description",
+						"type": "varchar"
+					},
+					{
+						"name": "Data_Type_Id",
+						"type": "varchar"
+					},
+					{
+						"name": "last_updated",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "StockledgerTransactionTypes_Staging"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/EnactorDW_Staging')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/StockledgerTransactions_Staging')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "EnactorDW_Staging",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"ConnectionStringKey": "@dataset().ConnectionStringKey",
+						"KeyVault_URL": "@dataset().KeyVault_URL"
+					}
+				},
+				"parameters": {
+					"ConnectionStringKey": {
+						"type": "string",
+						"defaultValue": "EnactorBI-StagingDB-ConnectionString"
+					},
+					"KeyVault_URL": {
+						"type": "string",
+						"defaultValue": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+					}
+				},
+				"folder": {
+					"name": "Staging"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "Date",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "Transaction_Type",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Product_Id",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Quantity",
+						"type": "float",
+						"precision": 15
+					},
+					{
+						"name": "Cost",
+						"type": "float",
+						"precision": 15
+					},
+					{
+						"name": "Retail_Ex_Tax",
+						"type": "bigint",
+						"precision": 19
+					},
+					{
+						"name": "Retail_Inc_Tax",
+						"type": "bigint",
+						"precision": 19
+					},
+					{
+						"name": "Location_Id",
+						"type": "varchar"
+					},
+					{
+						"name": "Product_Description",
+						"type": "varchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "StockledgerTransactions_Staging"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/EnactorDW_Staging')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Test_BIAzureKeyVault')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"KeyVault_URL": {
+						"type": "string",
+						"defaultValue": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+					}
+				},
+				"annotations": [],
+				"type": "AzureKeyVault",
+				"typeProperties": {
+					"baseUrl": "[parameters('Test_BIAzureKeyVault_properties_typeProperties_baseUrl')]",
+					"credential": {
+						"referenceName": "adf_mi_001",
+						"type": "CredentialReference"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/credentials/adf_mi_001')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AutoResolveIntegrationRuntime')]",
+			"type": "Microsoft.DataFactory/factories/integrationRuntimes",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "Managed",
+				"typeProperties": {
+					"computeProperties": {
+						"location": "AutoResolve",
+						"dataFlowProperties": {
+							"computeType": "General",
+							"coreCount": 8,
+							"timeToLive": 0,
+							"cleanup": false
+						},
+						"pipelineExternalComputeScaleProperties": {
+							"timeToLive": 60
+						}
+					}
+				},
+				"managedVirtualNetwork": {
+					"type": "ManagedVirtualNetworkReference",
+					"referenceName": "default"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/managedVirtualNetworks/default')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/EnactorDW')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"KeyVault_URL": {
+						"type": "string",
+						"defaultValue": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+					},
+					"ConnectionStringKey": {
+						"type": "string",
+						"defaultValue": "EnactorBI-DataWarehouseDB-ConnectionString"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"connectionString": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "Test_BIAzureKeyVault",
+							"type": "LinkedServiceReference",
+							"parameters": {
+								"KeyVault_URL": {
+									"value": "@linkedService().KeyVault_URL",
+									"type": "Expression"
+								}
+							}
+						},
+						"secretName": {
+							"value": "[parameters('EnactorDW_properties_typeProperties_connectionString_secretName')]",
+							"type": "Expression"
+						}
+					}
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]",
+				"[concat(variables('factoryId'), '/linkedServices/Test_BIAzureKeyVault')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/OperationalDB_MySQL')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"ConnectionStringKey": {
+						"type": "string",
+						"defaultValue": "xxx"
+					},
+					"KeyVault_URL": {
+						"type": "string",
+						"defaultValue": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+					}
+				},
+				"annotations": [],
+				"type": "MySql",
+				"typeProperties": {
+					"connectionString": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "Test_BIAzureKeyVault",
+							"type": "LinkedServiceReference",
+							"parameters": {
+								"KeyVault_URL": {
+									"value": "@linkedService().KeyVault_URL",
+									"type": "Expression"
+								}
+							}
+						},
+						"secretName": {
+							"value": "[parameters('OperationalDB_MySQL_properties_typeProperties_connectionString_secretName')]",
+							"type": "Expression"
+						}
+					}
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]",
+				"[concat(variables('factoryId'), '/linkedServices/Test_BIAzureKeyVault')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DimInventoryType')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "EnactorDW",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"KeyVault_URL": {
+							"value": "@dataset().KeyVault_URL",
+							"type": "Expression"
+						},
+						"ConnectionStringKey": {
+							"value": "@dataset().ConnectionStringKey",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"ConnectionStringKey": {
+						"type": "string",
+						"defaultValue": "EnactorBI-DataWarehouseDB-ConnectionString"
+					},
+					"KeyVault_URL": {
+						"type": "string",
+						"defaultValue": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+					}
+				},
+				"folder": {
+					"name": "Dimensions"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "Inventory_Type_Key",
+						"type": "bigint",
+						"precision": 19
+					},
+					{
+						"name": "Inventory_Type",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Description",
+						"type": "nvarchar"
+					},
+					{
+						"name": "IsCurrent",
+						"type": "bit"
+					},
+					{
+						"name": "DateCreated",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "DimInventoryType"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/EnactorDW')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DimLocation')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "EnactorDW",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"KeyVault_URL": {
+							"value": "@dataset().KeyVault_URL",
+							"type": "Expression"
+						},
+						"ConnectionStringKey": {
+							"value": "@dataset().ConnectionStringKey",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"ConnectionStringKey": {
+						"type": "string",
+						"defaultValue": "EnactorBI-DataWarehouseDB-ConnectionString"
+					},
+					"KeyVault_URL": {
+						"type": "string",
+						"defaultValue": "https://PR-EVAL-BI-Key-Vault.vault.azure.net/"
+					}
+				},
+				"folder": {
+					"name": "Dimensions"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "Location_Key",
+						"type": "bigint",
+						"precision": 19
+					},
+					{
+						"name": "location_id",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Description",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Town",
+						"type": "nvarchar"
+					},
+					{
+						"name": "CountryCode",
+						"type": "nvarchar"
+					},
+					{
+						"name": "CountryDescription",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Region1",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Region1Name",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Region2",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Region2Name",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Region3",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Region3Name",
+						"type": "nvarchar"
+					},
+					{
+						"name": "IsCurrent",
+						"type": "bit"
+					},
+					{
+						"name": "DateCreated",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "DimLocation"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/EnactorDW')]"
+			]
+		}
+	]
+}
