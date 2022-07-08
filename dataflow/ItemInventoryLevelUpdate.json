@@ -58,7 +58,7 @@
 					"name": "SelectColumns"
 				},
 				{
-					"name": "derivedColumn1"
+					"name": "SetSnapshotDate"
 				}
 			],
 			"scriptLines": [
@@ -153,8 +153,8 @@
 				"     ),",
 				"     skipDuplicateMapInputs: true,",
 				"     skipDuplicateMapOutputs: true) ~> SelectColumns",
-				"SelectColumns derive(SnapshotDate = currentTimestamp()) ~> derivedColumn1",
-				"derivedColumn1 sink(allowSchemaDrift: true,",
+				"SelectColumns derive(SnapshotDate = currentTimestamp()) ~> SetSnapshotDate",
+				"SetSnapshotDate sink(allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     input(",
 				"          Inventory_Item_Id as string,",
