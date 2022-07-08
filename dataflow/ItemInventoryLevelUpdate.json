@@ -56,6 +56,9 @@
 				},
 				{
 					"name": "SelectColumns"
+				},
+				{
+					"name": "derivedColumn1"
 				}
 			],
 			"scriptLines": [
@@ -150,7 +153,8 @@
 				"     ),",
 				"     skipDuplicateMapInputs: true,",
 				"     skipDuplicateMapOutputs: true) ~> SelectColumns",
-				"SelectColumns sink(allowSchemaDrift: true,",
+				"SelectColumns derive(SnapshotDate = currentTimestamp()) ~> derivedColumn1",
+				"derivedColumn1 sink(allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     input(",
 				"          Inventory_Item_Id as string,",
@@ -160,7 +164,8 @@
 				"          Container_Id as string,",
 				"          Inventory_Type as string,",
 				"          Value as integer,",
-				"          DateCreated as timestamp",
+				"          DateCreated as timestamp,",
+				"          SnapshotDate as timestamp",
 				"     ),",
 				"     deletable:false,",
 				"     insertable:true,",
@@ -178,7 +183,8 @@
 				"          Container_Id,",
 				"          Inventory_Type,",
 				"          Value,",
-				"          DateCreated",
+				"          DateCreated,",
+				"          SnapshotDate",
 				"     )) ~> WriteToFactItemInventoryLevelTable"
 			]
 		}
